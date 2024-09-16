@@ -17,6 +17,7 @@ class UserController {
           password,
           bio,
           skills,
+          role,
           socialLinks,
         } = req.body;
 
