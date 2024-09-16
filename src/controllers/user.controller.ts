@@ -51,7 +51,7 @@ class UserController {
         const user = await User.create({
           ...req.body,
           socialLinks: JSON.parse(socialLinks),
-          profilePicture: profilePictureUrl,
+          avatar: profilePictureUrl,
         });
 
         const createdUser = await User.findById(user._id).select(
