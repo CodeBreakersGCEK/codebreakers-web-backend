@@ -6,6 +6,7 @@ import { IUser, User } from "../models/user.model";
 
 interface UserRequest extends Request {
   user?: IUser;
+  isAdmin?: boolean;
 }
 
 const verifyJWT = asyncHandler(
@@ -30,6 +31,9 @@ const verifyJWT = asyncHandler(
         throw new ApiError(404, "User not found");
       }
       req.user = user;
+      if (user.role == "ADMIN"){
+        req.isAdmin = true;
+      }
       next();
     } catch (error: any) {
       throw new ApiError(401, error.message || "Unauthorized");

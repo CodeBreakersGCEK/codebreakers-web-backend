@@ -5,12 +5,13 @@ import jwt from "jsonwebtoken";
 export interface IUser extends Document {
   registrationNumber: string;
   fullname: string;
+  username: string;
   email: string;
   password: string;
   avatar: string;
   skills: string[];
   role: "ADMIN" | "USER" | "ALUMNI";
-  events: string[];
+  events: mongoose.Schema.Types.ObjectId[];
   batch: string;
   position: string;
   socialMediaLinks: ISocialMedia;
@@ -40,6 +41,12 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       type: String,
       required: true,
     },
+    username: {
+      type: String,
+      unique: true,
+      required: true,
+      lowercase: true,
+    },
     email: {
       type: String,
       required: true,
@@ -55,17 +62,18 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     skills: {
       type: [String],
-      default: [],
     },
     role: {
       type: String,
       enum: ["ADMIN", "USER", "ALUMNI"],
       default: "USER",
     },
-    events: {
-      type: [String],
-      default: [],
-    },
+    events: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Event",
+      },
+    ],
     batch: {
       type: String,
     },
@@ -119,6 +127,7 @@ userSchema.methods.generateAccessToken = function (): string {
       _id: this._id,
       registrationNumber: this.registrationNumber,
       email: this.email,
+      username: this.username,
       fullname: this.fullname,
       role: this.role,
     },
@@ -133,10 +142,6 @@ userSchema.methods.generateRefreshToken = function (): string {
   return jwt.sign(
     {
       _id: this._id,
-      registrationNumber: this.registrationNumber,
-      email: this.email,
-      fullname: this.fullname,
-      role: this.role,
     },
     process.env.REFRESH_TOKEN_SECRET as string,
     {
