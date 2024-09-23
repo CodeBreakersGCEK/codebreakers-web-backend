@@ -3,6 +3,7 @@ import { Document, Schema, model } from "mongoose";
 export interface IEvent extends Document {
   title: string;
   description: string;
+  eventImage: string;
   date: Date;
   duration: number;
   venue: string;
@@ -22,6 +23,9 @@ const eventSchema: Schema<IEvent> = new Schema(
     description: {
       type: String,
       required: true,
+    },
+    eventImage: {
+      type: String,
     },
     date: {
       type: Date,

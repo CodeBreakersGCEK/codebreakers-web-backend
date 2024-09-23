@@ -275,7 +275,7 @@ class UserController {
     if (req.body.socialMediaLinks) {
       req.body.socialMediaLinks = JSON.parse(req.body.socialMediaLinks);
     }
-
+    let profilePictureUrl:string = "";
     if (req.file) {
       const existingAvatarPublicId = req.user?.avatar.substring(
         req.user?.avatar.lastIndexOf("/") + 1,
@@ -288,12 +288,12 @@ class UserController {
       if (!newAvatar) {
         throw new ApiError(500, "Error uploading profile picture");
       }
-      req.body.avatar = newAvatar.secure_url;
+      profilePictureUrl = newAvatar.secure_url || "";
     }
 
     const updated = await User.findByIdAndUpdate(
       req.user?._id,
-      { ...req.body },
+      { ...req.body, avatar: profilePictureUrl },
       { new: true, runValidators: true }
     ).select("-password -refreshToken");
 

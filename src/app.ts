@@ -1,7 +1,10 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+
+// Import routes
 import userRouter from "./routes/user.routes";
+import eventRouter from "./routes/event.routes";
 
 const app = express();
 
@@ -18,7 +21,7 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // Use routes
-
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/events", eventRouter);
 
 export { app };
