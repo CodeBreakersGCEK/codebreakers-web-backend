@@ -304,8 +304,6 @@ class eventController {
     if (!event) {
       throw new ApiError(404, "Event not found");
     }
-    console.log(event);
-    
     res.status(200).json(new ApiResponse(200, "Event found", event[0]));
   });
 
