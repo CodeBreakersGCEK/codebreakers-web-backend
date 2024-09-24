@@ -5,7 +5,6 @@ import projectController from "../controllers/project.controller";
 const router = Router();
 
 // Project routes
-router.route("/get-project/:projectId").get(projectController.getProjectById);
 router
   .route("/get-approved-projects")
   .get(projectController.getApprovedProjects);
@@ -20,6 +19,9 @@ router
 router
   .route("/delete-project/:projectId")
   .delete(verifyJWT, projectController.deleteProject);
+router
+  .route("/get-project/:projectId")
+  .get(verifyJWT, projectController.getProjectById);
 
 // Admin routes
 router

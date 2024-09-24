@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Event } from "../models/event.model";
-import { IUser } from "../models/user.model";
+import { IUser, User } from "../models/user.model";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary";
@@ -56,7 +56,7 @@ class eventController {
       throw new ApiError(400, "Please provide event id");
     }
     const { date, tags } = req.body;
-    const event = await Event.findById(req.params.id);
+    const event = await Event.findById(eventId);
     if (!event) {
       throw new ApiError(404, "Event not found");
     }
@@ -74,18 +74,17 @@ class eventController {
         throw new ApiError(500, "Error uploading Event picture");
       }
       imageUrl = newEventImage?.secure_url || "";
-    }
-
-    if (!imageUrl) {
-      throw new ApiError(500, "Failed to upload image");
+      if (!imageUrl) {
+        throw new ApiError(500, "Failed to upload image");
+      }
     }
     const updatedEvent = await Event.findByIdAndUpdate(
-      req.params.id,
+      eventId,
       {
         ...req.body,
-        eventImage: imageUrl,
-        date: new Date(date),
-        tags: tags?.split(","),
+        eventImage: (imageUrl ? imageUrl : event.eventImage),
+        date: (req.body.date ? new Date(date) : event.date),
+        tags: (tags ? tags.split(",") : event.tags),
       },
       { new: true }
     );
@@ -106,7 +105,7 @@ class eventController {
     if (!eventId) {
       throw new ApiError(400, "Please provide event id");
     }
-    const event = await Event.findByIdAndDelete(req.params.id);
+    const event = await Event.findByIdAndDelete(eventId);
     if (!event) {
       throw new ApiError(404, "Event not found");
     }
@@ -131,7 +130,7 @@ class eventController {
     const event = await Event.aggregate([
       {
         $match: {
-          _id: new mongoose.Types.ObjectId(req.params.id),
+          _id: new mongoose.Types.ObjectId(req.params.eventId),
         },
       },
       {
@@ -201,6 +200,81 @@ class eventController {
         },
       },
       {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "event",
+          as: "projectLikes",
+        }
+      },
+      // Populate comments
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "event",
+          as: "comments",
+          pipeline: [
+            {
+              $match: {
+                status: "APPROVED"
+              }
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "author",
+                foreignField: "_id",
+                as: "author",
+                pipeline: [
+                  {
+                    $project: {
+                      fullname: 1,
+                      email: 1,
+                      username: 1,
+                      avatar: 1,
+                      registrationNumber: 1,
+                      role: 1,
+                      skills: 1,
+                      socialMediaLinks: 1,
+                    },
+                  }
+                ]
+              }
+            },
+            {
+              $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "comment",
+                as: "commentLikes"
+              }
+            },
+            {
+              $addFields: {
+                author: {$arrayElemAt: ["$author", 0]},
+                likes: {$size: "$commentLikes"},
+                isLiked: {
+                  $cond: {
+                    if: {$in: [req.user?._id, "$commentLikes.author"]},
+                    then: true,
+                    else: false
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                commentLikes: 0,
+                reviewedBy: 0
+              }
+            }
+            
+          ]
+        }
+      },
+
+      {
         $addFields: {
           winner: {
             $arrayElemAt: ["$winner", 0],
@@ -208,13 +282,31 @@ class eventController {
           createdBy: {
             $arrayElemAt: ["$createdBy", 0],
           },
+          likes: {
+            $size: "$projectLikes"
+          },
+          isLiked: {
+            $cond: {
+              if: { $in: [req.user?._id, "$projectLikes.author"] },
+              then: true,
+              else: false,
+            },
+          },
         },
       },
+      {
+        $project: {
+          projectLikes: 0,
+          commentLikes: 0
+        }
+      }
     ]);
     if (!event) {
       throw new ApiError(404, "Event not found");
     }
-    res.status(200).json(new ApiResponse(200, "Event found", event));
+    console.log(event);
+    
+    res.status(200).json(new ApiResponse(200, "Event found", event[0]));
   });
 
   // 5. Get all events
@@ -309,6 +401,16 @@ class eventController {
     if (!eventId) {
       throw new ApiError(400, "Please provide event id");
     }
+    await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $addToSet: {
+          events: eventId,
+        },
+      },
+      { new: true }
+    );
+
     const event = await Event.findByIdAndUpdate(
       eventId,
       {
@@ -334,6 +436,15 @@ class eventController {
     if (!eventId) {
       throw new ApiError(400, "Please provide event id");
     }
+    await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $pull: {
+          events: eventId,
+        },
+      },
+      { new: true }
+    );
     const event = await Event.findByIdAndUpdate(
       eventId,
       {

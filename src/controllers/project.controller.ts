@@ -276,9 +276,92 @@ class projectController {
         },
       },
       {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "project",
+          as: "comments",
+          pipeline: [
+            {
+              $match: {
+                status: "APPROVED"
+              }
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "author",
+                foreignField: "_id",
+                as: "author",
+                pipeline: [
+                  {
+                    $project: {
+                      fullname: 1,
+                      email: 1,
+                      username: 1,
+                      avatar: 1,
+                      registrationNumber: 1,
+                      role: 1,
+                      skills: 1,
+                      socialMediaLinks: 1,
+                    },
+                  }
+                ]
+              }
+            },
+            {
+              $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "comment",
+                as: "commentLikes"
+              }
+            },
+            {
+              $addFields: {
+                author: {$arrayElemAt: ["$author", 0]},
+                likes: {$size: "$commentLikes"},
+                isLiked: {
+                  $cond: {
+                    if: {$in: [req.user?._id, "$commentLikes.author"]},
+                    then: true,
+                    else: false
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                commentLikes: 0,
+                reviewedBy: 0
+              }
+            }
+            
+          ]
+        }
+      },
+      {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "project",
+          as: "likes",
+        }
+      },
+      {
         $addFields: {
           author: { $arrayElemAt: ["$author", 0] },
           reviewBy: { $arrayElemAt: ["$reviewBy", 0] },
+          likes: { $size: "$likes"},
+          isLiked: {
+            $cond: {
+              if: {
+                $in: [req.user?._id, "$likes.author"]
+              },
+              then: true,
+              else: false
+            }
+          }
         },
       },
       {
@@ -293,6 +376,9 @@ class projectController {
           techStack: 1,
           author: 1,
           publishedAt: 1,
+          likes: 1,
+          isLiked: 1,
+          comments: 1
         },
       },
     ]);

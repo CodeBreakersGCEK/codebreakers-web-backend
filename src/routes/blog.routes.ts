@@ -5,11 +5,11 @@ import blogController from "../controllers/blog.controller";
 const router = Router();
 
 // Public routes
-router.route("/get-blog/:blogId").get(blogController.getBlogById);
 router.route("/get-approved-blogs").get(blogController.getApprovedBlogs);
 
 // Protected routes
 router.route("/create-blog").post(verifyJWT, blogController.createBlog);
+router.route("/get-blog/:blogId").get(verifyJWT,blogController.getBlogById);
 router
   .route("/update-blog/:blogId")
   .patch(verifyJWT, blogController.updateBlog);

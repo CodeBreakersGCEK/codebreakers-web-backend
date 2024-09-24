@@ -7,7 +7,6 @@ const router = Router();
 
 // Public Routes
 router.route("/all-events").get(eventController.getAllEvents);
-router.route("/event/:eventId").get(eventController.getEvent);
 
 // Protected Routes
 router
@@ -16,6 +15,7 @@ router
 router
   .route("/leave-event/:eventId")
   .patch(verifyJWT, eventController.leaveEvent);
+router.route("/event/:eventId").get(verifyJWT, eventController.getEvent);
 
 // Admin Routes
 router

@@ -193,9 +193,7 @@ class UserController {
         incomingRefreshToken,
         process.env.REFRESH_TOKEN_SECRET
       );
-      const user = await User.findOne(
-        (decoded as JwtPayload)._id as mongoose.Types.ObjectId
-      );
+      const user = await User.findById((decoded as JwtPayload)._id);
       if (!user) {
         throw new ApiError(404, "User not found");
       }
@@ -297,7 +295,7 @@ class UserController {
 
     const updated = await User.findByIdAndUpdate(
       req.user?._id,
-      { ...req.body, avatar: profilePictureUrl },
+      { ...req.body, avatar: profilePictureUrl || user.avatar },
       { new: true, runValidators: true }
     ).select("-password -refreshToken");
 
@@ -308,23 +306,13 @@ class UserController {
     res.status(200).json(new ApiResponse(200, "Profile updated", updated));
   });
 
-  // Get user account
-  getCurrentUser = asyncHandler(async (req: UserRequest, res: Response) => {
-    const user = await User.findById(req.user?._id).select(
-      "-password -refreshToken"
-    );
-    if (!user) {
-      throw new ApiError(404, "User not found");
-    }
-    res.status(200).json(new ApiResponse(200, "User profile", user));
-  });
-
   // Get all users (Admin only)
   getAllUsers = asyncHandler(async (req: UserRequest, res: Response) => {
     if (!req.isAdmin) {
       throw new ApiError(403, "Unauthorized to get all users");
     }
-    const users = await User.find().select("-password -refreshToken");
+    const users = await User.find({}).select("-password -refreshToken");
+
     res.status(200).json(new ApiResponse(200, "All users", users));
   });
 
@@ -346,7 +334,8 @@ class UserController {
 
   // Change user role (Admin only)
   changeUserRole = asyncHandler(async (req: UserRequest, res: Response) => {
-    const { username, role } = req.body;
+    const { role } = req.body;
+    const { username } = req.params;
     if (!req.isAdmin) {
       throw new ApiError(403, "Unauthorized to change user role");
     }
@@ -365,14 +354,208 @@ class UserController {
   });
 
   // Get userProfile by ID
-  getUserProfile = asyncHandler(async (req: Request, res: Response) => {
+  getUserProfile = asyncHandler(async (req: UserRequest, res: Response) => {
     const { username } = req.params;
     if (!username) {
       throw new ApiError(400, "Please provide a username");
     }
-
-    //Aggregate Pipeline to get complete user profile
-    //TODO: Implement this after creating other models
+    const user = await User.aggregate([
+      {
+        $match: { username },
+      },
+      // Pipeline for blogs
+      {
+        $lookup: {
+          from: "blogs",
+          localField: "_id",
+          foreignField: "author",
+          as: "posts",
+          pipeline: [
+            {
+              $match: {
+                status: "APPROVED",
+              },
+            },
+            {
+              $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "blog",
+                as: "Bloglikes",
+              },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "reviewBy",
+                foreignField: "_id",
+                as: "reviewBy",
+                pipeline: [
+                  {
+                    $project: {
+                      fullname: 1,
+                      username: 1,
+                      avatar: 1,
+                      email: 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $addFields: {
+                totalLikes: { $size: "$Bloglikes" },
+                isLiked: {
+                  $cond: {
+                    if: { $in: [req.user?._id, "$Bloglikes.author"] },
+                    then: true,
+                    else: false,
+                  },
+                },
+                reviewBy: { $arrayElemAt: ["$reviewBy", 0] },
+              },
+            },
+            {
+              $project: {
+                title: 1,
+                content: 1,
+                publishedAt: 1,
+                tags: 1,
+                totalLikes: 1,
+                isLiked: 1,
+                reviewBy: 1,
+              },
+            },
+          ],
+        },
+      },
+      // Pipeline for Events
+      {
+        $lookup: {
+          from: "events",
+          localField: "events",
+          foreignField: "_id",
+          as: "events",
+          pipeline: [
+            {
+              $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "event",
+                as: "Eventlikes",
+              },
+            },
+            {
+              $addFields: {
+                totalLikes: { $size: "$Eventlikes" },
+                isLiked: {
+                  $cond: {
+                    if: { $in: [req.user?._id, "$Eventlikes.author"] },
+                    then: true,
+                    else: false,
+                  },
+                },
+                reviewBy: { $arrayElemAt: ["$reviewBy", 0] },
+              },
+            },
+            {
+              $project: {
+                title: 1,
+                description: 1,
+                date: 1,
+                eventImage: 1,
+                venue: 1,
+                eventType: 1,
+                tags: 1,
+                winner: 1,
+                totalLikes: 1,
+                isLiked: 1,
+              },
+            },
+          ],
+        },
+      },
+      // Pipeline for Projects
+      {
+        $lookup: {
+          from: "projects",
+          localField: "_id",
+          foreignField: "author",
+          as: "projects",
+          pipeline: [
+            {
+              $match: {
+                status: "APPROVED",
+              },
+            },
+            {
+              $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "project",
+                as: "Projectlikes",
+              },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "reviewBy",
+                foreignField: "_id",
+                as: "reviewBy",
+                pipeline: [
+                  {
+                    $project: {
+                      fullname: 1,
+                      username: 1,
+                      avatar: 1,
+                      email: 1,
+                      role: 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $addFields: {
+                totalLikes: { $size: "$Projectlikes" },
+                isLiked: {
+                  $cond: {
+                    if: { $in: [req.user?._id, "$Projectlikes.author"] },
+                    then: true,
+                    else: false,
+                  },
+                },
+                reviewBy: { $arrayElemAt: ["$reviewBy", 0] },
+              },
+            },
+            {
+              $project: {
+                title: 1,
+                description: 1,
+                sourceCodeLink: 1,
+                deployedLink: 1,
+                tags: 1,
+                techStack: 1,
+                totalLikes: 1,
+                isLiked: 1,
+                reviewBy: 1,
+              },
+            },
+          ],
+        },
+      },
+      // Projecting pipeline
+      {
+        $project: {
+          password: 0,
+          refreshToken: 0,
+        },
+      },
+    ]);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    res.status(200).json(new ApiResponse(200, "User profile", user[0]));
   });
 }
 
