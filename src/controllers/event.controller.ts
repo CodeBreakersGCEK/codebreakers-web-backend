@@ -6,6 +6,7 @@ import { ApiError } from "../utils/ApiError";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary";
 import { ApiResponse } from "../utils/ApiResponse";
 import mongoose from "mongoose";
+import { create } from "domain";
 
 interface UserRequest extends Request {
   user?: IUser;
@@ -200,13 +201,23 @@ class eventController {
           ],
         },
       },
+      {
+        $addFields: {
+          winner: {
+            $arrayElemAt: ["$winner", 0],
+          },
+          createdBy: {
+            $arrayElemAt: ["$createdBy", 0],
+          },
+        },
+      },
     ]);
     if (!event) {
       throw new ApiError(404, "Event not found");
     }
     res.status(200).json(new ApiResponse(200, "Event found", event));
   });
-  
+
   // 5. Get all events
   getAllEvents = asyncHandler(async (req: UserRequest, res: Response) => {
     const events = await Event.aggregate([
@@ -274,6 +285,16 @@ class eventController {
               },
             },
           ],
+        },
+      },
+      {
+        $addFields: {
+          winner: {
+            $arrayElemAt: ["$winner", 0],
+          },
+          createdBy: {
+            $arrayElemAt: ["$createdBy", 0],
+          },
         },
       },
     ]);
