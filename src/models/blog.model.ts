@@ -37,7 +37,11 @@ const blogSchema: Schema<IBlog> = new Schema(
       ref: "User",
     },
   },
-  { timestamps: true }
+  {
+    timestamps: {
+      createdAt: "publishedAt",
+    },
+  }
 );
 
 export const Blog = model<IBlog>("Blog", blogSchema);
