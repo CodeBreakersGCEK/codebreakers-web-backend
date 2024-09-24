@@ -117,6 +117,9 @@ class blogController {
     if (!blog) {
       throw new ApiError(404, "Blog not found");
     }
+    if (blog.status !== "PENDING") {
+      throw new ApiError(400, "Blog is already reviewed");
+    }
     if (status !== "APPROVED" && status !== "REJECTED") {
       throw new ApiError(400, "Invalid status");
     }

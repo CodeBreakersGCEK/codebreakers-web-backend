@@ -50,7 +50,11 @@ const projectSchema: Schema<IProject> = new Schema(
       type: [String],
     },
   },
-  { timestamps: true }
+  {
+    timestamps: {
+      createdAt: "publishedAt",
+    },
+  }
 );
 
 export const Project = model<IProject>("Project", projectSchema);

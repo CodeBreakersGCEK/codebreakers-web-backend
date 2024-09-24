@@ -57,7 +57,9 @@ class UserController {
       }
 
       if (skills) {
-        req.body.skills = skills.split(",");
+        req.body.skills = skills
+          .split(",")
+          .map((skill: string) => skill.trim());
       }
 
       // Upload profile picture to cloudinary
@@ -269,13 +271,15 @@ class UserController {
     }
 
     if (req.body.skills) {
-      req.body.skills = req.body.skills.split(",");
+      req.body.skills = req.body.skills
+        .split(",")
+        .map((skill: string) => skill.trim());
     }
 
     if (req.body.socialMediaLinks) {
       req.body.socialMediaLinks = JSON.parse(req.body.socialMediaLinks);
     }
-    let profilePictureUrl:string = "";
+    let profilePictureUrl: string = "";
     if (req.file) {
       const existingAvatarPublicId = req.user?.avatar.substring(
         req.user?.avatar.lastIndexOf("/") + 1,
