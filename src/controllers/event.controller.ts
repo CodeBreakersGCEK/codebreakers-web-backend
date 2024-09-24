@@ -1,4 +1,4 @@
-import e, { Request, Response } from "express";
+import { Request, Response } from "express";
 import { Event } from "../models/event.model";
 import { IUser } from "../models/user.model";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -6,7 +6,6 @@ import { ApiError } from "../utils/ApiError";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary";
 import { ApiResponse } from "../utils/ApiResponse";
 import mongoose from "mongoose";
-import { create } from "domain";
 
 interface UserRequest extends Request {
   user?: IUser;
@@ -302,6 +301,56 @@ class eventController {
       throw new ApiError(404, "No events found");
     }
     res.status(200).json(new ApiResponse(200, "Events found", events));
+  });
+
+  // 6. Join an event
+  joinEvent = asyncHandler(async (req: UserRequest, res: Response) => {
+    const { eventId } = req.params;
+    if (!eventId) {
+      throw new ApiError(400, "Please provide event id");
+    }
+    const event = await Event.findByIdAndUpdate(
+      eventId,
+      {
+        $addToSet: {
+          participants: req.user?._id,
+        },
+      },
+      { new: true }
+    );
+    if (!event) {
+      throw new ApiError(404, "Event not found");
+    }
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, "You have successfully joined the event", event)
+      );
+  });
+
+  // 7. Leave an event
+  leaveEvent = asyncHandler(async (req: UserRequest, res: Response) => {
+    const { eventId } = req.params;
+    if (!eventId) {
+      throw new ApiError(400, "Please provide event id");
+    }
+    const event = await Event.findByIdAndUpdate(
+      eventId,
+      {
+        $pull: {
+          participants: req.user?._id,
+        },
+      },
+      { new: true }
+    );
+    if (!event) {
+      throw new ApiError(404, "Event not found");
+    }
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, "You have successfully left the event", event)
+      );
   });
 }
 

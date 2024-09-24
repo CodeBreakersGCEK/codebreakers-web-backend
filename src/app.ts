@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 // Import routes
 import userRouter from "./routes/user.routes";
 import eventRouter from "./routes/event.routes";
+import blogRouter from "./routes/blog.routes";
+import projectRouter from "./routes/project.routes";
 
 const app = express();
 
@@ -23,5 +25,7 @@ app.use(cookieParser());
 // Use routes
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/events", eventRouter);
+app.use("/api/v1/blogs", blogRouter);
+app.use("/api/v1/projects", projectRouter);
 
 export { app };

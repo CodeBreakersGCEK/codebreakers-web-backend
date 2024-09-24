@@ -9,13 +9,21 @@ const router = Router();
 router.route("/all-events").get(eventController.getAllEvents);
 router.route("/event/:eventId").get(eventController.getEvent);
 
+// Protected Routes
+router
+  .route("/join-event/:eventId")
+  .patch(verifyJWT, eventController.joinEvent);
+router
+  .route("/leave-event/:eventId")
+  .patch(verifyJWT, eventController.leaveEvent);
+
 // Admin Routes
 router
   .route("/create-event")
   .post(verifyJWT, upload.single("eventImage"), eventController.createEvent);
 router
   .route("/update-event/:eventId")
-  .patch(verifyJWT, eventController.updateEvent);
+  .patch(verifyJWT, upload.single("eventImage"), eventController.updateEvent);
 router
   .route("/delete-event/:eventId")
   .delete(verifyJWT, eventController.deleteEvent);
